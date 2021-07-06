@@ -78,7 +78,7 @@ router.patch('/user/topics', auth, async(req,res) => {
         for( let i = 0 ; i< topic.followTags.length ; i++ ){
             user.followTags.push(topic.followTags[i])
         }
-
+        user.followTags=Array.from(new Set(user.followTags));
         await user.save()
         await res.send(topic)
     }   catch (e) {
@@ -89,13 +89,28 @@ router.patch('/user/topics', auth, async(req,res) => {
 router.get('/feeds', auth, async(req,res) =>{
     try {
         let user = req.user
-
         let feeds = []
         for( let i=0 ; i < user.followTags.length ; i++ ){
-
-            //let blogs = await Blog.find({ tags: { $in: `${user.followTags[i]}` } })
-            let blogs = await Blog.find({ tags : user.followTags[i] })
-            feeds.push(blogs)
+            let blogs = await Blog.find({ tags : user.followTags[i] },{
+                title:1,
+                body:1,
+                tags:1,
+                image:1
+            })
+            .populate({
+                path:"owner",
+                select:"name email"
+            })
+            .populate({
+                path:"comments",
+                select:"body",
+                populate:{
+                    path:"authorId",
+                    select:"name email image"
+                }
+            })
+            .lean()
+            feeds.unshift(blogs)
         }
         res.send(feeds)
     }   catch (e) {

@@ -60,22 +60,16 @@ router.post('/blog', auth, async (req, res,next) => {
     }
 })
 
-router.get('/myBlog', auth, async (req, res) => {
+router.get('/myAllBlog', auth, async (req, res) => {
     try {
-        const blog = await Blog.find({owner: req.user._id }).lean()
-        if (!blog) {
-            return res.status(404).send('not found')
-        }
-        res.status(200).send(blog)
-    } catch (e) {
-        res.status(500).send()
-    }
-})
+        const blogs = await Blog.find({owner:req.user._id},
+            {
+                title:1,
+                body:1,
+                tags:1,
+                image:1
 
-router.get('/allBlog', auth, async (req, res) => {
-    try {
-        const blogs = await Blog.find({owner:req.user._id}).lean()
-        .populate("owner", "name email")
+            })
         .populate({
             path : 'comments',
             select: 'body',
@@ -84,14 +78,14 @@ router.get('/allBlog', auth, async (req, res) => {
               select:'name email'
             }
           })
-          .exec()
-        
-        if (!blogs) {
-            return res.status(404).send('not found')
+          .sort({_id : -1})
+          .lean()
+          
+        if (!blogs.length) {
+            return res.status(404).send('You dont have any blog')
         }
-        res.status(200).send(blogs)
+        res.status(200).json(blogs)
     } catch (e) {
-        console.log(e);
         res.status(500).send()
     }
 })
