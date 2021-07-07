@@ -21,10 +21,10 @@ const BlogImage = async( file ) =>{
             // Recived file data
             let image = await Jimp.read(file.data)
             await image.quality(70)
-            const bannerImage = 'blog-' + Date.now() + '-image' + '.jpg'
+            const blogImage = 'blog-' + Date.now() + '-image' + '.jpg'
             // Upload in destination
-           await image.write(`blogImages/${bannerImage}`)
-            return bannerImage
+           await image.write(`blogImages/${blogImage}`)
+            return blogImage
         } catch (error) {
             if (error) return error
         }
@@ -42,5 +42,6 @@ const removeFile = (destination, file) => {
 module.exports = {
     BlogImage,
     UserImage,
-    removeFile
+    removeFile,
+    UserImage
 }

@@ -3,11 +3,40 @@ const User = require('../models/user')
 const auth = require('../middleware/auth')
 const { route } = require('../app')
 const Blog = require('../models/blog')
+const ImageServices = require('../services/imageProcessing');
 const router = new express.Router()
 
 router.post('/users', async (req, res) => {
-    const user = new User(req.body)
     try {
+        const {name,email,password} = req.body
+        let data={
+           name,
+           email,
+           password
+        }
+        if(req.files){
+            const file = req.files.image
+
+            var allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif)$/i
+
+                if (!allowedExtensions.exec(file.name)) {
+                    return res.status(400).json({
+                        status: false,
+                        message: "Image Extension Is Not Valid !"
+                    })
+                }
+        
+                const uploadImage = await ImageServices.UserImage(file)
+        
+                if (!uploadImage) {
+                    return res.status(500).json({
+                        status: false,
+                        message: "Image upload failed"
+                    })
+                }
+                data.image=uploadImage
+        }
+        const user = new User(data)
         await user.save()
         const token = await user.generateAuthToken()
         res.status(201).send(token)
@@ -28,7 +57,7 @@ router.post('/users/login', async (req, res) => {
 
 router.post('/users/logout', auth, async (req, res) => {
     try {
-        req.user.access_token = {}
+        req.user.access_token = null
         await req.user.save()
         res.send()
     } catch (e) {
@@ -36,15 +65,6 @@ router.post('/users/logout', auth, async (req, res) => {
     }
 })
 
-router.post('/users/logoutAll', auth, async (req, res) => {
-    try {
-        req.user.tokens = []
-        await req.user.save()
-        res.send()
-    } catch (e) {
-        res.status(500).send()
-    }
-})
 
 router.get('/users/me', auth, async (req, res) => {
     res.send(req.user)
@@ -53,8 +73,34 @@ router.get('/users/me', auth, async (req, res) => {
 
 router.patch('/users/me', auth, async (req, res) => {
 
-    const updates = Object.keys(req.body)
-    const allowedUpdates = ['name', 'email','password','followTags','image']
+    let updates = Object.keys(req.body)
+
+    if( req.files ){
+        const file = req.files.image
+        var allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif)$/i
+
+            if (!allowedExtensions.exec(file.name)) {
+                return res.status(400).json({
+                    status: false,
+                    message: "Image Extension Is Not Valid !"
+                })
+            }
+            if(req.user.image){
+                await ImageServices.removeFile("blogImages/",req.user.image)
+            }
+            const uploadImage = await ImageServices.UserImage(file)
+    
+            if (!uploadImage) {
+                return res.status(500).json({
+                    status: false,
+                    message: "Image upload failed"
+                })
+            }
+
+            req.user.image=uploadImage
+    }
+    
+    const allowedUpdates = ['name', 'email','password']
     const isValidOperation = updates.every((update) => allowedUpdates.includes(update))
 
     if (!isValidOperation) {
@@ -127,24 +173,6 @@ router.delete('/users/me', auth, async (req, res) => {
     }
 })
 
-router.get('/allUsers', auth, async (req, res) => {
-    try {
-        const users= await User.find({isAdmin:false})
-        res.status(201).send(users)
-    } catch (e) {
-        res.status(500).send('not working')
-    }
-})
-
-router.delete('/deleteOne/:id',auth,async(req,res) =>{
-    try{
-        const user = await User.findOneAndDelete({ _id: req.params.id})
-        res.status(200).send(user)
-    }
-    catch(e){
-        res.status(500).send('not working')
-    }
-})
 
 router.get('/findOne/:id',auth,async(req,res) =>{
     try{

@@ -151,7 +151,7 @@ router.delete('/blog/:id', auth, async (req, res) => {
             res.status(404).send('not found')
         }
         if (blog.image) {
-            await ImageServices.removeFile("blogImages",blog.image)
+            await ImageServices.removeFile("blogImages/",blog.image)
         }
 
         const delBlog = await Blog.deleteOne({ _id: id })
